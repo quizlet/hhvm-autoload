@@ -30,7 +30,8 @@ final class ComposerPlugin
     $vendor = $composer->getConfig()->get('vendor-dir', '/');
 
     $this->vendor = $vendor;
-    $this->root = dirname($vendor);
+    // TODO: Remove this hard-coded path in favor of config
+    $this->root = dirname(dirname($vendor));
   }
 
   public static function getSubscribedEvents() {
@@ -55,7 +56,8 @@ final class ComposerPlugin
       $this->root,
       $event->isDevMode()
         ? IncludedRoots::DEV_AND_PROD
-        : IncludedRoots::PROD_ONLY
+        : IncludedRoots::PROD_ONLY,
+      $this->vendor
     );
 
     $handler = $event->isDevMode()

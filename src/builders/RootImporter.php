@@ -18,6 +18,7 @@ final class RootImporter implements Builder {
   public function __construct(
     string $root,
     IncludedRoots $included = IncludedRoots::PROD_ONLY,
+    ?string $vendor = null,
   ) {
     $this->hh_importer = new HHImporter($root, $included);
     $this->builders[] = $this->hh_importer;
@@ -27,15 +28,17 @@ final class RootImporter implements Builder {
       return;
     }
 
-    foreach (glob($root.'/vendor/*/*/') as $dependency) {
-      if (file_exists($dependency.'/hh_autoload.json')) {
+    $vendor = $vendor ?? $root.'/vendor';
+
+    foreach (glob($vendor.'/*/*/', GLOB_ONLYDIR | GLOB_MARK) as $dependency) {
+      if (file_exists($dependency.'hh_autoload.json')) {
         $this->builders[] = new HHImporter(
           $dependency,
           IncludedRoots::PROD_ONLY,
         );
         continue;
       }
-      $composer_json = $dependency.'/composer.json';
+      $composer_json = $dependency.'composer.json';
       if (file_exists($composer_json)) {
         $this->builders[] = new ComposerImporter($composer_json, $config);
         continue;
