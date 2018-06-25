@@ -71,7 +71,8 @@ final class ComposerPlugin
       $this->root,
       $event->isDevMode()
         ? IncludedRoots::DEV_AND_PROD
-        : IncludedRoots::PROD_ONLY
+        : IncludedRoots::PROD_ONLY,
+      $this->vendor,
     );
 
     $handler = $event->isDevMode()
