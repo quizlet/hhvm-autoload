@@ -37,7 +37,8 @@ final class ComposerPlugin
     $vendor = $composer->getConfig()->get('vendor-dir', '/');
 
     $this->vendor = $vendor;
-    $this->root = dirname($vendor);
+    // TODO: Make this configurable instead of hard-coding intended path
+    $this->root = dirname(dirname($vendor));
   }
 
   /** Tell composer what events we're interested in.
