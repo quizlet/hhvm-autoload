@@ -36,7 +36,7 @@ abstract class BasePSRFilter implements Builder {
       (new Map($this->source->getAutoloadMap()['class']))
       ->filterWithKey(
         function(string $class_name, string $file): bool {
-          if (stripos($class_name, $this->prefix) !== 0) {
+          if ($this->prefix !== '' && stripos($class_name, $this->prefix) !== 0) {
             return false;
           }
           $expected = static::getExpectedPathWithoutExtension(
