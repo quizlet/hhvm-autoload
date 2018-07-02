@@ -74,10 +74,10 @@ final class Writer {
     $is_dev = $is_dev ? 'true' : 'false';
 
     if ($this->relativeAutoloadRoot) {
-      $root = '__DIR__.\'/../\'';
+      $root = '__DIR__.\'/../../\'';
       $requires = $files->map(
         $file ==> '__DIR__.'.var_export(
-          '/../'.$this->relativePath($file),
+          '/../../'.$this->relativePath($file),
           true,
         ),
       );
