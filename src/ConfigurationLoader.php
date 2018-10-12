@@ -3,9 +3,8 @@
  *  Copyright (c) 2015-present, Facebook, Inc.
  *  All rights reserved.
  *
- *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant
- *  of patent rights can be found in the PATENTS file in the same directory.
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
  *
  */
 
@@ -13,23 +12,28 @@ namespace Facebook\AutoloadMap;
 
 use Facebook\AutoloadMap\__Private\TypeAssert;
 
+/** Load configuration from JSON */
 abstract final class ConfigurationLoader {
-
+  /** Load configuration from a JSON file */
   public static function fromFile(string $path): Config {
     invariant(
-      is_readable($path),
+      \is_readable($path),
       'Tried to load configuration file %s, but it is not readable.',
       $path,
     );
-    return self::fromJSON(file_get_contents($path), $path);
+    return self::fromJSON(\file_get_contents($path), $path);
   }
 
+  /** Load configuration from a JSON string
+   *
+   * @param $path arbitrary string - used to create clearer error messages
+   */
   public static function fromJSON(string $json, string $path): Config {
-    $decoded = json_decode($json, /* as array = */ true);
+    $decoded = \json_decode($json, /* as array = */ true);
     invariant(
       is_array($decoded),
       'Expected configuration file to contain a JSON object, got %s',
-      gettype($decoded),
+      \gettype($decoded),
     );
     return self::fromData(
       /* HH_IGNORE_ERROR[4110] */ $decoded,
@@ -37,6 +41,10 @@ abstract final class ConfigurationLoader {
     );
   }
 
+  /** Load configuration from decoded data.
+   *
+   * @param $path arbitrary string - used to create clearer error messages
+   */
   public static function fromData(
     array<string, mixed> $data,
     string $path,
@@ -92,9 +100,10 @@ abstract final class ConfigurationLoader {
   }
 
   private static function getDefaultParser(): Parser {
-    if (extension_loaded('factparse')) {
-      return Parser::EXT_FACTPARSE;
-    }
-    return Parser::DEFINITION_FINDER;
+    invariant(
+      \extension_loaded('factparse'),
+      'ext_factparse is now required',
+    );
+    return Parser::EXT_FACTPARSE;
   }
 }

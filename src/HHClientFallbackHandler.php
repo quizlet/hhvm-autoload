@@ -3,18 +3,20 @@
  *  Copyright (c) 2015-present, Facebook, Inc.
  *  All rights reserved.
  *
- *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant
- *  of patent rights can be found in the PATENTS file in the same directory.
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
  *
  */
 
 namespace Facebook\AutoloadMap;
 
 /**
- * If a class/function/type isn't in the map, ask hh_client where it is.
+ * If a class/function/type isn't in the map, ask `hh_client` where it is.
  *
- * No op if CI, TRAVIS, or CONTINOUS_INTEGRATION is true.
+ * This caches the results in APC (falling back to a file) to provide fast
+ * workflows.
+ *
+ * Does nothing if CI, TRAVIS, or CONTINOUS_INTEGRATION is true.
  */
 class HHClientFallbackHandler extends FailureHandler {
   private AutoloadMap $map;
@@ -28,6 +30,11 @@ class HHClientFallbackHandler extends FailureHandler {
     $this->map = Generated\map();
   }
 
+  /** Retrieve the cached autoload map.
+   *
+   * This will try to retrieve a cached map from APC, and if that fails,
+   * a cache file.
+   */
   protected function getCache(): ?self::TCache{
     $key = __CLASS__.'!cache';
     if (\apc_exists($key)) {
@@ -56,16 +63,20 @@ class HHClientFallbackHandler extends FailureHandler {
     return $data;
   }
 
+  /** Store a cached map in APC and file.
+   *
+   * If the file is not writable, it will only be stored in APC.
+   */
   protected function storeCache(self::TCache $data): void {
     \apc_store(__CLASS__.'!cache', $data);
 
-    if (!\is_writable(Generated\root())) {
+    if (!\is_writable(\dirname($this->getCacheFilePath()))) {
       return;
     }
 
     \file_put_contents(
       $this->getCacheFilePath(),
-      \json_encode($data, JSON_PRETTY_PRINT),
+      \json_encode($data, \JSON_PRETTY_PRINT),
     );
   }
 
@@ -86,9 +97,11 @@ class HHClientFallbackHandler extends FailureHandler {
       /* HH_IGNORE_ERROR[4110] shape as array */ $map,
       Generated\root(),
     );
+
+    \register_shutdown_function(() ==> $this->storeCacheIfDirtyDirty());
   }
 
-  public function __destruct() {
+  private function storeCacheIfDirtyDirty(): void {
     if (!$this->dirty) {
       return;
     }
@@ -99,12 +112,25 @@ class HHClientFallbackHandler extends FailureHandler {
     $this->storeCache($data);
   }
 
+  /** Where to store the file cache */
   protected function getCacheFilePath(): string {
     return Generated\root().'/vendor/hh_autoload.hh-cache';
   }
 
+  /** Whether or not to use `hh_client`.
+   *
+   * Defaults to true, unless we're on a common CI platform.
+   */
   <<__Override>>
   public static function isEnabled(): bool {
+    $force = \getenv('ENABLE_HH_CLIENT_AUTOLOAD');
+    if ($force === 'true' || $force === '1') {
+      return true;
+    }
+    if ($force === 'false' || $force === '0') {
+      return false;
+    }
+
     $killswitches = ImmSet { 'CI', 'TRAVIS', 'CONTINUOUS_INTEGRATION' };
     foreach ($killswitches as $killswitch) {
       $env = \getenv($killswitch);
@@ -115,12 +141,13 @@ class HHClientFallbackHandler extends FailureHandler {
     return true;
   }
 
+  <<__Override>>
   public function handleFailedType(string $name): void {
     $file = $this->lookupPath('class', $name);
     if ($file === null) {
-      if (substr($name, 0, 4) === 'xhp_') {
+      if (\substr($name, 0, 4) === 'xhp_') {
         $xhp_name =
-          ':'.str_replace(array('__', '_'), array(':', '-'), substr($name, 4));
+          ':'.\str_replace(array('__', '_'), array(':', '-'), \substr($name, 4));
         $file = $this->lookupPath('class', $xhp_name);
       }
 
@@ -136,6 +163,7 @@ class HHClientFallbackHandler extends FailureHandler {
     $this->requireFile($file);
   }
 
+  <<__Override>>
   public function handleFailedFunction(string $name): void {
     $file = $this->lookupPath('function', $name);
     if ($file === null) {
@@ -145,6 +173,7 @@ class HHClientFallbackHandler extends FailureHandler {
     $this->requireFile($file);
   }
 
+  <<__Override>>
   public function handleFailedConstant(string $name): void {
     $file = $this->lookupPath('constant', $name);
     if ($file === null) {

@@ -3,9 +3,8 @@
  *  Copyright (c) 2015-present, Facebook, Inc.
  *  All rights reserved.
  *
- *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant
- *  of patent rights can be found in the PATENTS file in the same directory.
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
  *
  */
 
@@ -16,7 +15,7 @@ final class ComposerImporterTest extends BaseTestCase {
    * @dataProvider getParsers
    */
   public function testRootImportWithScannedFiles(Parser $parser): void {
-    $root = realpath(__DIR__.'/../');
+    $root = \realpath(__DIR__.'/../');
     $importer = new ComposerImporter(
       $root.'/composer.json',
       shape(
@@ -52,7 +51,7 @@ final class ComposerImporterTest extends BaseTestCase {
    * @dataProvider getParsers
    */
   public function testRootImportWithRequiredFiles(Parser $parser): void {
-    $root = realpath(__DIR__.'/../');
+    $root = \realpath(__DIR__.'/../');
     $importer = new ComposerImporter(
       $root.'/composer.json',
       shape(
@@ -80,12 +79,12 @@ final class ComposerImporterTest extends BaseTestCase {
    * @dataProvider getParsers
    */
   public function testPSR4Import(Parser $parser): void {
-    $root = realpath(__DIR__.'/fixtures/psr-4');
+    $root = \realpath(__DIR__.'/fixtures/psr-4');
     $composer = $root.'/composer.json';
-    $this->assertTrue(file_exists($composer));
+    $this->assertTrue(\file_exists($composer));
 
-    $composer_config = json_decode(
-      file_get_contents($composer),
+    $composer_config = \json_decode(
+      \file_get_contents($composer),
       /* as array = */ true,
     );
 
@@ -125,12 +124,12 @@ final class ComposerImporterTest extends BaseTestCase {
    * @dataProvider getParsers
    */
   public function testPSR4ImportNoTrailingSlash(Parser $parser): void {
-    $root = realpath(__DIR__.'/fixtures/psr-4');
+    $root = \realpath(__DIR__.'/fixtures/psr-4');
     $composer = $root.'/composer.json';
-    $this->assertTrue(file_exists($composer));
+    $this->assertTrue(\file_exists($composer));
 
-    $composer_config = json_decode(
-      file_get_contents($composer),
+    $composer_config = \json_decode(
+      \file_get_contents($composer),
       /* as array = */ true,
     );
     $this->assertNotEmpty(
@@ -165,12 +164,12 @@ final class ComposerImporterTest extends BaseTestCase {
    * @dataProvider getParsers
    */
   public function testPSR0Import(Parser $parser): void {
-    $root = realpath(__DIR__.'/fixtures/psr-0');
+    $root = \realpath(__DIR__.'/fixtures/psr-0');
     $composer = $root.'/composer.json';
-    $this->assertTrue(file_exists($composer));
+    $this->assertTrue(\file_exists($composer));
 
-    $composer_config= json_decode(
-      file_get_contents($composer),
+    $composer_config= \json_decode(
+      \file_get_contents($composer),
       /* as array = */ true,
     );
 
@@ -201,12 +200,12 @@ final class ComposerImporterTest extends BaseTestCase {
    * @dataProvider getParsers
    */
   public function testPSR0ImportNoTrailingSlash(Parser $parser): void {
-    $root = realpath(__DIR__.'/fixtures/psr-0');
+    $root = \realpath(__DIR__.'/fixtures/psr-0');
     $composer = $root.'/composer.json';
-    $this->assertTrue(file_exists($composer));
+    $this->assertTrue(\file_exists($composer));
 
-    $composer_config = json_decode(
-      file_get_contents($composer),
+    $composer_config = \json_decode(
+      \file_get_contents($composer),
       /* as array = */ true,
     );
     $this->assertNotEmpty(
@@ -249,12 +248,12 @@ final class ComposerImporterTest extends BaseTestCase {
    * @dataProvider getParsers
    */
   public function testPSR0ImportUnderscores(Parser $parser): void {
-    $root = realpath(__DIR__.'/fixtures/psr-0');
+    $root = \realpath(__DIR__.'/fixtures/psr-0');
     $composer = $root.'/composer.json';
-    $this->assertTrue(file_exists($composer));
+    $this->assertTrue(\file_exists($composer));
 
-    $composer_config = json_decode(
-      file_get_contents($composer),
+    $composer_config = \json_decode(
+      \file_get_contents($composer),
       /* as array = */ true,
     );
 

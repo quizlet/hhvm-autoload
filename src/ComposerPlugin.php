@@ -3,11 +3,14 @@
  *  Copyright (c) 2015-present, Facebook, Inc.
  *  All rights reserved.
  *
- *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant
- *  of patent rights can be found in the PATENTS file in the same directory.
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
  *
  */
+
+/**************************************/
+/***** THIS FILE IS PHP, NOT HACK *****/
+/**************************************/
 
 namespace Facebook\AutoloadMap;
 
@@ -18,6 +21,9 @@ use Composer\Plugin\PluginInterface;
 use Composer\Script\Event;
 use Composer\Script\ScriptEvents;
 
+/** Plugin for PHP composer to automatically update the autoload map whenever
+ * dependencies are changed or updated.
+ */
 final class ComposerPlugin
   implements PluginInterface, EventSubscriberInterface {
 
@@ -25,6 +31,7 @@ final class ComposerPlugin
   private $root;
   private $io;
 
+  /** Initialize members */
   public function activate(Composer $composer, IOInterface $io) {
     $this->io = $io;
     $vendor = $composer->getConfig()->get('vendor-dir', '/');
@@ -34,6 +41,10 @@ final class ComposerPlugin
     $this->root = dirname(dirname($vendor));
   }
 
+  /** Tell composer what events we're interested in.
+   *
+   * In this case, we want to run whenever composer's own autoload map is updated.
+   */
   public static function getSubscribedEvents() {
     return [
       ScriptEvents::POST_AUTOLOAD_DUMP => [
@@ -42,6 +53,10 @@ final class ComposerPlugin
     ];
   }
 
+  /** Callback for after the main composer autoload map has been updated.
+   *
+   * Here we update our autoload map.
+   */
   public function onPostAutoloadDump(Event $event) {
     $this->debugMessage("Disabling AutoTypecheck");
     require_once($this->vendor.'/fredemmott/hack-error-suppressor/src/HackErrorSuppressor.php');

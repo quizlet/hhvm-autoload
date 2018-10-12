@@ -1,4 +1,4 @@
-<?hh // strict
+<?hh
 /*
  *  Copyright (c) 2015-present, Facebook, Inc.
  *  All rights reserved.
@@ -8,6 +8,8 @@
  *
  */
 
-namespace Facebook\AutoloadMap\TestFixtures;
+namespace Facebook\AutoloadMap\TestData;
 
-type ExampleType = string;
+function MixedCaseFunction(): string {
+  return __FILE__;
+}

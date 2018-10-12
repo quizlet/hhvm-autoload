@@ -3,14 +3,20 @@
  *  Copyright (c) 2015-present, Facebook, Inc.
  *  All rights reserved.
  *
- *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant
- *  of patent rights can be found in the PATENTS file in the same directory.
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
  *
  */
 
 namespace Facebook\AutoloadMap;
 
+/** Build an autoload map for the project root.
+ *
+ * This will:
+ * - create an `HHImporter` for the current directory
+ * - create `ComposerImporter`s or `HHImporter`s for every project under
+ *   `vendor/`
+ */
 final class RootImporter implements Builder {
   private Vector<Builder> $builders = Vector { };
   private HHImporter $hh_importer;
@@ -30,8 +36,8 @@ final class RootImporter implements Builder {
 
     $vendor = $vendor ?? $root.'/vendor';
 
-    foreach (glob($vendor.'/*/*/', GLOB_ONLYDIR | GLOB_MARK) as $dependency) {
-      if (file_exists($dependency.'hh_autoload.json')) {
+    foreach (\glob($vendor.'/*/*/', \GLOB_ONLYDIR | \GLOB_MARK) as $dependency) {
+      if (\file_exists($dependency.'hh_autoload.json')) {
         $this->builders[] = new HHImporter(
           $dependency,
           IncludedRoots::PROD_ONLY,
@@ -39,7 +45,7 @@ final class RootImporter implements Builder {
         continue;
       }
       $composer_json = $dependency.'composer.json';
-      if (file_exists($composer_json)) {
+      if (\file_exists($composer_json)) {
         $this->builders[] = new ComposerImporter($composer_json, $config);
         continue;
       }

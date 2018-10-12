@@ -3,9 +3,8 @@
  *  Copyright (c) 2015-present, Facebook, Inc.
  *  All rights reserved.
  *
- *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant
- *  of patent rights can be found in the PATENTS file in the same directory.
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
  *
  */
 
@@ -13,6 +12,7 @@ namespace Facebook\AutoloadMap;
 
 use Facebook\AutoloadMap\__Private\TypeAssert;
 
+/** Create an autoload map from a directory using `ext_factparse`. */
 final class FactParseScanner implements Builder {
   const type TFacts = array<string, shape(
     'types' => array<shape(
@@ -23,7 +23,7 @@ final class FactParseScanner implements Builder {
     'typeAliases' => array<string>,
   )>;
 
-  private static function untyped_to_shape(
+  private static function untypedToShape(
     mixed $data,
   ): self::TFacts {
     invariant(
@@ -38,24 +38,35 @@ final class FactParseScanner implements Builder {
         'FactsParse data is not string-keyed',
       );
 
-      $out[$file] = shape(
-        'types' => TypeAssert\is_array_of_shapes_with_name_field(
-          $facts['types'] ?? null,
-          'FactParse types',
-        ),
-        'constants' => TypeAssert\is_array_of_strings(
-          $facts['constants'] ?? null,
-          'FactParse constants',
-        ),
-        'functions' => TypeAssert\is_array_of_strings(
-          $facts['functions'] ?? null,
-          'FactParse functions',
-        ),
-        'typeAliases' => TypeAssert\is_array_of_strings(
-          $facts['typeAliases'] ?? null,
-          'FactParse typeAliases',
-        ),
-      );
+      try {
+        $out[$file] = shape(
+          'types' => TypeAssert\is_array_of_shapes_with_name_field(
+            $facts['types'] ?? null,
+            'FactParse types',
+          ),
+          'constants' => TypeAssert\is_array_of_strings(
+            $facts['constants'] ?? null,
+            'FactParse constants',
+          ),
+          'functions' => TypeAssert\is_array_of_strings(
+            $facts['functions'] ?? null,
+            'FactParse functions',
+          ),
+          'typeAliases' => TypeAssert\is_array_of_strings(
+            $facts['typeAliases'] ?? null,
+            'FactParse typeAliases',
+          ),
+        );
+      } catch (\Exception $e) {
+        if (@\filesize($file) === 0) {
+          continue;
+        }
+        throw new \Exception(
+          "Failed to parse '".$file.'"',
+          $e->getCode(),
+          $e,
+        );
+      }
     }
     return $out;
   }
@@ -64,7 +75,7 @@ final class FactParseScanner implements Builder {
     private string $root,
     private ImmVector<string> $paths,
   ) {
-    $version = (int) phpversion('factparse');
+    $version = (int) \phpversion('factparse');
     invariant(
       $version === 3,
       'Factparse version 3 is required, got %d',
@@ -110,7 +121,7 @@ final class FactParseScanner implements Builder {
       /* force_hh = */ false,
       /* multithreaded = */ true,
     );
-    $facts = self::untyped_to_shape($facts);
+    $facts = self::untypedToShape($facts);
 
     $classes = [];
     $functions = [];
@@ -118,16 +129,16 @@ final class FactParseScanner implements Builder {
     $constants = [];
     foreach ($facts as $file => $file_facts) {
       foreach ($file_facts['types'] as $type) {
-        $classes[strtolower($type['name'])] = $file;
+        $classes[\strtolower($type['name'])] = $file;
       }
       foreach ($file_facts['constants'] as $const) {
         $constants[$const] = $file;
       }
       foreach ($file_facts['functions'] as $func) {
-        $functions[strtolower($func)] = $file;
+        $functions[\strtolower($func)] = $file;
       }
       foreach ($file_facts['typeAliases'] as $alias) {
-        $types[strtolower($alias)] = $file;
+        $types[\strtolower($alias)] = $file;
       }
     }
     return shape(

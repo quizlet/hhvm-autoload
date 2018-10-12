@@ -3,9 +3,8 @@
  *  Copyright (c) 2015-present, Facebook, Inc.
  *  All rights reserved.
  *
- *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant
- *  of patent rights can be found in the PATENTS file in the same directory.
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
  *
  */
 
@@ -69,7 +68,7 @@ final class ScannerTest extends BaseTestCase {
       self::HH_ONLY_SRC,
       $parser,
     );
-    $this->assertSame($class, get_class($builder));
+    $this->assertSame($class, \get_class($builder));
   }
 
   /**
@@ -83,7 +82,7 @@ final class ScannerTest extends BaseTestCase {
       self::HH_ONLY_SRC.'/constant.php',
       $parser,
     );
-    $this->assertSame($class, get_class($builder));
+    $this->assertSame($class, \get_class($builder));
     $map = $builder->getAutoloadMap();
     $this->assertEmpty($map['class']);
     $this->assertEmpty($map['function']);
@@ -104,33 +103,11 @@ final class ScannerTest extends BaseTestCase {
     foreach ($expected as $name => $file) {
       $a = self::HH_ONLY_SRC.'/'.$file;
       $b =
-        idx($actual, strtolower(self::FIXTURES_PREFIX.$name))
-        ?: idx($actual, self::FIXTURES_PREFIX.$name)
-        ?: idx($actual, $name);
+        idx($actual, \strtolower(self::FIXTURES_PREFIX.$name))
+        ?? idx($actual, self::FIXTURES_PREFIX.$name)
+        ?? idx($actual, $name);
 
       $this->assertSame($a, $b);
-    }
-  }
-
-  public function testParsersMatch(): void {
-    if (!extension_loaded('factparse')) {
-      $this->markTestSkipped('definition-finder is the only option');
-    }
-
-    $root = realpath(__DIR__.'/../');
-    $def_finder = DefinitionFinderScanner::fromTree($root)->getAutoloadMap();
-    $fact_parse = FactParseScanner::fromTree($root)->getAutoloadMap();
-    foreach (array_keys(Shapes::toArray($def_finder)) as $type) {
-      /* HH_IGNORE_ERROR[4051] */
-      $expected = $def_finder[$type];
-      /* HH_IGNORE_ERROR[4051] */
-      $actual = $fact_parse[$type];
-      ksort(&$expected);
-      ksort(&$actual);
-      $this->assertEquals(
-        array_filter($expected, $path ==> strpos($path, '/test') === false),
-        array_filter($actual, $path ==> strpos($path, '/test') === false),
-      );
     }
   }
 }
