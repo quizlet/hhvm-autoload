@@ -150,6 +150,10 @@ final class FactParseScanner implements Builder {
   }
 
   public function getFiles(): ImmVector<string> {
-    return ImmVector { };
+    return ImmVector {};
+  }
+
+  public function getPaths(): ImmVector<string> {
+    return $this->paths;
   }
 }

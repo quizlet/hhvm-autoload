@@ -49,28 +49,54 @@ abstract class BasePSRFilter implements Builder {
   }
 
   public function getAutoloadMap(): AutoloadMap {
-    $classes =
-      (new Map($this->source->getAutoloadMap()['class']))->filterWithKey(
-        function(string $class_name, string $file): bool {
-          if ($this->prefix !== '' && \stripos($class_name, $this->prefix) !== 0) {
-            return false;
-          }
-          $expected = static::getExpectedPathWithoutExtension(
-            $class_name,
-            $this->prefix,
-            $this->root,
-          );
-          $expected = \strtolower($expected);
-          $file = \strtolower($file);
-          return ($file === $expected.'.hh' || $file === $expected.'.php');
-        },
-      );
+    try {
+      $classes =
+        (new Map($this->source->getAutoloadMap()['class']))->filterWithKey(
+          function(string $class_name, string $file): bool {
+            if (
+              $this->prefix !== '' && \stripos($class_name, $this->prefix) !== 0
+            ) {
+              return false;
+            }
+            $expected = static::getExpectedPathWithoutExtension(
+              $class_name,
+              $this->prefix,
+              $this->root,
+            );
+            $expected = \strtolower($expected);
+            $file = \strtolower($file);
+            return ($file === $expected.'.hh' || $file === $expected.'.php');
+          },
+        );
 
-    return shape(
-      'class' => $classes->toArray(),
-      'function' => [],
-      'type' => [],
-      'constant' => [],
-    );
+      return shape(
+        'class' => $classes->toArray(),
+        'function' => [],
+        'type' => [],
+        'constant' => [],
+      );
+    } catch (\Exception $e) {
+      // XXX: Hack to work around failing fact_parse() calls
+      // When fact_parse() fails (as with Protobuf PHP classes containing binary data),
+      // fall back to assuming the PSR structure of the directory is correct.
+      $classes = Map {};
+      $source = $this->source;
+      invariant($source instanceof FactParseScanner, 'Only one ');
+      foreach ($source->getPaths() as $path) {
+        $relevantPath = \substr($path, \strlen($this->root));
+        $namespace = \dirname($relevantPath);
+        $fakedClassName = $this->prefix.
+          ($namespace === '.' ? '' : $namespace.'\\').
+          \basename($relevantPath, '.php');
+        $classes[\strtolower($fakedClassName)] = $path;
+      }
+
+      return shape(
+        'class' => $classes->toArray(),
+        'function' => [],
+        'type' => [],
+        'constant' => [],
+      );
+    }
   }
 }
