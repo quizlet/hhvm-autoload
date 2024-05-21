@@ -89,6 +89,12 @@ final class ComposerPlugin
       ->writeToFile($this->vendor.'/hh_autoload.php');
   }
 
+  // Satisfy Plugin API 2 interface
+  public function deactivate(Composer $composer, IOInterface $io) {}
+
+  // Satisfy Plugin API 2 interface
+  public function uninstall(Composer $composer, IOInterface $io) {}
+
   private function debugMessage(\HH\string $message) {
     if ($this->io->isDebug()) {
       $this->io->write('hhvm-autoload: '.$message);
