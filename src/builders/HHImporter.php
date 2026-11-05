@@ -70,8 +70,18 @@ final class HHImporter implements Builder {
       if ($tree[0] !== '/') {
         $tree = $root.'/'.$tree;
       }
+      $resolved = Scanner::resolveInsidePackage($root, $tree);
+      if ($resolved === null || !\is_dir($resolved)) {
+        \fprintf(
+          \STDERR,
+          "hhvm-autoload: skipping root %s from %s: not a directory inside the package\n",
+          $tree,
+          $config_file,
+        );
+        continue;
+      }
       $this->builders[] = Scanner::fromTree(
-        $tree,
+        $resolved,
         $config['parser'],
       );
     }
