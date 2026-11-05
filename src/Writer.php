@@ -102,6 +102,11 @@ final class Writer {
     }
     $is_dev = $is_dev ? 'true' : 'false';
 
+    $failure_handler = $this->failureHandler;
+    if ($failure_handler !== null) {
+      $failure_handler = self::validateFailureHandler($failure_handler, $map);
+    }
+
     if ($this->relativeAutoloadRoot) {
       $root = '__DIR__.\'/../\'';
       $requires = $files->map(
@@ -136,23 +141,20 @@ final class Writer {
       Shapes::toArray($map),
     );
 
-    $failure_handler = $this->failureHandler;
-    if ($failure_handler !== null) {
-      if (\substr($failure_handler, 0, 1) !== '\\') {
-        $failure_handler = '\\'.$failure_handler;
-      }
-    }
-
     if ($failure_handler !== null) {
       $add_failure_handler = \sprintf(
-        "if (%s::isEnabled()) {\n".
-        "  \$handler = new %s();\n".
+        "\$handler_class = %s;\n".
+        "if (\n".
+        "  \\is_subclass_of(\$handler_class, %s) &&\n".
+        "  \$handler_class::isEnabled()\n".
+        ") {\n".
+        "  \$handler = new \$handler_class();\n".
         "  \$map['failure'] = [\$handler, 'handleFailure'];\n".
         "  \HH\autoload_set_paths(\$map, root());\n".
         "  \$handler->initialize();\n".
         "}",
-        $failure_handler,
-        $failure_handler,
+        \var_export($failure_handler, true),
+        \var_export(FailureHandler::class, true),
       );
     } else {
       $add_failure_handler = null;
@@ -204,6 +206,55 @@ EOF;
     );
 
     return $this;
+  }
+
+  /** Return the failure handler class name to emit, or throw.
+   *
+   * The returned name is written into `hh_autoload.php`, so anything other
+   * than a single class identifier must be rejected here.
+   *
+   * Handlers that can't be loaded yet are accepted if the map being written
+   * defines them; the generated file checks their parent class at runtime.
+   */
+  private static function validateFailureHandler(
+    string $handler,
+    AutoloadMap $map,
+  ): string {
+    $is_name = \preg_match(
+      '/\A\\\\?[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*'.
+      '(?:\\\\[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*)*\z/',
+      $handler,
+    );
+    if ($is_name !== 1) {
+      throw new ConfigurationException(
+        'Failure handler %s is not a class name',
+        \var_export($handler, true),
+      );
+    }
+    $name = \ltrim($handler, '\\');
+
+    if (\class_exists($name)) {
+      if (
+        !\is_subclass_of($name, FailureHandler::class) ||
+        (new \ReflectionClass($name))->isAbstract()
+      ) {
+        throw new ConfigurationException(
+          'Failure handler %s is not a concrete subclass of %s',
+          $name,
+          FailureHandler::class,
+        );
+      }
+      return $name;
+    }
+
+    if (\array_key_exists(\strtolower($name), $map['class'])) {
+      return $name;
+    }
+
+    throw new ConfigurationException(
+      'Failure handler class %s does not exist',
+      $name,
+    );
   }
 
   <<__Memoize>>
