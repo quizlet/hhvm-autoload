@@ -89,6 +89,12 @@ final class FactParseScanner implements Builder {
     return new FactParseScanner('', ImmVector { $path });
   }
 
+  public static function fromFiles(
+    ImmVector<string> $paths,
+  ): Builder {
+    return new FactParseScanner('', $paths);
+  }
+
   public static function fromTree(
     string $root,
   ): Builder {
