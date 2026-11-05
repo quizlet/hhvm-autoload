@@ -17,6 +17,7 @@ namespace Facebook\AutoloadMap;
  * `hh_autoload.json` */
 final class ComposerImporter implements Builder {
   private string $root;
+  private string $packageRoot;
   private Vector<Builder> $builders = Vector {};
   private Set<string> $excludes = Set {};
   private Vector<string> $files = Vector {};
@@ -26,6 +27,11 @@ final class ComposerImporter implements Builder {
       throw new Exception('%s does not exist', $path);
     }
     $this->root = \dirname($path);
+    $package_root = \realpath($this->root);
+    if (!\is_string($package_root)) {
+      throw new Exception('%s could not be resolved', $this->root);
+    }
+    $this->packageRoot = $package_root;
     $composer_json = \file_get_contents($path);
     $composer_config = \json_decode($composer_json, /* as array = */ true);
     $composer_autoload = idx($composer_config, 'autoload');
@@ -49,7 +55,7 @@ final class ComposerImporter implements Builder {
           break;
         case 'exclude-from-classmap':
           foreach ($values as $value) {
-            $this->excludes[] = $this->root.'/'.$value;
+            $this->excludes[] = $this->packageRoot.'/'.$value;
           }
           break;
         default:
@@ -82,7 +88,10 @@ final class ComposerImporter implements Builder {
    */
   private function importClassmap(array<string> $roots): void {
     foreach ($roots as $root) {
-      $path = $this->root.'/'.$root;
+      $path = $this->resolve($root);
+      if ($path === null) {
+        continue;
+      }
       try {
         if (\is_dir($path)) {
           $scanner = Scanner::fromTree($path, $this->config['parser']);
@@ -102,16 +111,18 @@ final class ComposerImporter implements Builder {
     $roots = self::normalizePSRRoots($roots);
     foreach ($roots as $prefix => $prefix_roots) {
       foreach ($prefix_roots as $root) {
+        $path = $this->resolve($root);
+        if ($path === null) {
+          continue;
+        }
         try {
-          $scanner =
-            Scanner::fromTree($this->root.'/'.$root, $this->config['parser']);
+          $scanner = Scanner::fromTree($path, $this->config['parser']);
         } catch (\UnexpectedValueException $e) {
           // Incorrectly configured configured path.
           continue;
         }
 
-        $this->builders[] =
-          new PSR4Filter($prefix, $this->root.'/'.$root, $scanner);
+        $this->builders[] = new PSR4Filter($prefix, $path, $scanner);
       }
     }
   }
@@ -120,16 +131,18 @@ final class ComposerImporter implements Builder {
     $roots = self::normalizePSRRoots($roots);
     foreach ($roots as $prefix => $prefix_roots) {
       foreach ($prefix_roots as $root) {
+        $path = $this->resolve($root);
+        if ($path === null) {
+          continue;
+        }
         try {
-          $scanner =
-            Scanner::fromTree($this->root.'/'.$root, $this->config['parser']);
+          $scanner = Scanner::fromTree($path, $this->config['parser']);
         } catch (\UnexpectedValueException $e) {
           // Incorrectly configured configured path.
           continue;
         }
 
-        $this->builders[] =
-          new PSR0Filter($prefix, $this->root.'/'.$root, $scanner);
+        $this->builders[] = new PSR0Filter($prefix, $path, $scanner);
       }
     }
   }
@@ -152,18 +165,30 @@ final class ComposerImporter implements Builder {
 
   private function importFiles(array<string> $files): void {
     foreach ($files as $file) {
-      $file = $this->root.'/'.$file;
       if ($this->config['autoloadFilesBehavior'] ===
           AutoloadFilesBehavior::FIND_DEFINITIONS) {
+        $path = $this->resolve($file);
+        if ($path === null || !\is_file($path)) {
+          continue;
+        }
         try {
           $this->builders[] =
-            Scanner::fromFile($file, $this->config['parser']);
+            Scanner::fromFile($path, $this->config['parser']);
         } catch (\UnexpectedValueException $e) {
           // Incorrectly configured configured path.
         }
       } else {
-        $this->files[] = $file;
+        $this->files[] = $this->root.'/'.$file;
       }
     }
+  }
+
+  /** Canonical path of a package-relative autoload path, or null if it does
+   * not exist inside the package. */
+  private function resolve(string $relative): ?string {
+    return Scanner::resolveInsidePackage(
+      $this->packageRoot,
+      $this->root.'/'.$relative,
+    );
   }
 }

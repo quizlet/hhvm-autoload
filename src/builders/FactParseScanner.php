@@ -14,6 +14,8 @@ use Facebook\AutoloadMap\__Private\TypeAssert;
 
 /** Create an autoload map from a directory using `ext_factparse`. */
 final class FactParseScanner implements Builder {
+  const int MAX_FILES_PER_TREE = 4096;
+
   const type TFacts = array<string, shape(
     'types' => array<shape(
       'name' => string,
@@ -89,27 +91,64 @@ final class FactParseScanner implements Builder {
     return new FactParseScanner('', ImmVector { $path });
   }
 
+  /** Scan a directory tree.
+   *
+   * Directory symlinks are not followed, files that resolve outside of the
+   * tree are ignored, unreadable directories are skipped, and at most
+   * `MAX_FILES_PER_TREE` files are recorded. Recorded paths are canonical.
+   */
   public static function fromTree(
     string $root,
   ): Builder {
-    $paths = Vector { };
-    $rdi = new \RecursiveDirectoryIterator($root);
-    $rii = new \RecursiveIteratorIterator($rdi);
-    foreach ($rii as $info) {
-      if (!$info->isFile()) {
-        continue;
-      }
-      if (!$info->isReadable()) {
-        continue;
-      }
-      $ext = $info->getExtension();
-      if ($ext !== 'php' && $ext !== 'hh' && $ext !== 'xhp') {
-        continue;
-      }
-      $paths[] = $info->getPathname();
+    $real_root = \realpath($root);
+    if (!\is_string($real_root) || !\is_dir($real_root)) {
+      throw new \UnexpectedValueException(
+        $root.' is not a directory',
+      );
     }
 
-    return new FactParseScanner($root, $paths->immutable());
+    $paths = Vector { };
+    try {
+      $rdi = new \RecursiveDirectoryIterator(
+        $real_root,
+        \FilesystemIterator::SKIP_DOTS,
+      );
+      $rii = new \RecursiveIteratorIterator(
+        $rdi,
+        \RecursiveIteratorIterator::LEAVES_ONLY,
+        \RecursiveIteratorIterator::CATCH_GET_CHILD,
+      );
+      foreach ($rii as $info) {
+        if (!$info->isFile()) {
+          continue;
+        }
+        if (!$info->isReadable()) {
+          continue;
+        }
+        $ext = $info->getExtension();
+        if ($ext !== 'php' && $ext !== 'hh' && $ext !== 'xhp') {
+          continue;
+        }
+        $path = \realpath($info->getPathname());
+        if (!\is_string($path) || !Scanner::isPathInside($path, $real_root)) {
+          continue;
+        }
+        if ($paths->count() >= self::MAX_FILES_PER_TREE) {
+          \fprintf(
+            \STDERR,
+            "hhvm-autoload: %s contains more than %d files; ignoring the rest\n",
+            $real_root,
+            self::MAX_FILES_PER_TREE,
+          );
+          break;
+        }
+        $paths[] = $path;
+      }
+    } catch (\UnexpectedValueException $e) {
+      // Unreadable directory; keep whatever was found before it.
+    }
+
+    return new FactParseScanner($real_root, $paths->immutable());
   }
 
   public function getAutoloadMap(): AutoloadMap {
