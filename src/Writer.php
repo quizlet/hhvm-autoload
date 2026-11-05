@@ -214,14 +214,17 @@ EOF;
     if ($root === null) {
       throw new Exception('Call setRoot() before writeToFile()');
     }
-    $path = \realpath($path);
-    if (\strpos($path, $root) !== 0) {
+    $real = \realpath($path);
+    if (!\is_string($real)) {
+      throw new Exception("%s does not exist", $path);
+    }
+    if (!PackagePath::isInside($real, $root)) {
       throw new Exception(
         "%s is outside root %s",
-        $path,
+        $real,
         $root,
       );
     }
-    return \substr($path, \strlen($root) + 1);
+    return \substr($real, \strlen(\rtrim($root, '/')) + 1);
   }
 }

@@ -152,17 +152,29 @@ final class ComposerImporter implements Builder {
 
   private function importFiles(array<string> $files): void {
     foreach ($files as $file) {
-      $file = $this->root.'/'.$file;
+      $resolved =
+        PackagePath::resolveInside($this->root, $this->root.'/'.$file);
       if ($this->config['autoloadFilesBehavior'] ===
           AutoloadFilesBehavior::FIND_DEFINITIONS) {
+        if ($resolved === null) {
+          // Incorrectly configured configured path.
+          continue;
+        }
         try {
           $this->builders[] =
-            Scanner::fromFile($file, $this->config['parser']);
+            Scanner::fromFile($resolved, $this->config['parser']);
         } catch (\UnexpectedValueException $e) {
           // Incorrectly configured configured path.
         }
       } else {
-        $this->files[] = $file;
+        if ($resolved === null) {
+          throw new Exception(
+            'autoload files entry %s in %s/composer.json does not exist',
+            $file,
+            $this->root,
+          );
+        }
+        $this->files[] = $resolved;
       }
     }
   }
