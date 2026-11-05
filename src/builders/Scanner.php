@@ -24,6 +24,17 @@ abstract final class Scanner {
     }
   }
 
+  /** Construct a builder for several files */
+  public static function fromFiles(
+    ImmVector<string> $paths,
+    Parser $parser,
+  ): Builder {
+    switch ($parser) {
+      case Parser::EXT_FACTPARSE:
+        return FactParseScanner::fromFiles($paths);
+    }
+  }
+
   /** Construct a builder for a tree */
   public static function fromTree(
     string $path,

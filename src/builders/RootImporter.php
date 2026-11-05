@@ -16,9 +16,13 @@ namespace Facebook\AutoloadMap;
  * - create an `HHImporter` for the current directory
  * - create `ComposerImporter`s or `HHImporter`s for every project under
  *   `vendor/`
+ *
+ * If two of these projects define the same class, function, type, or
+ * constant in different files, an `Exception` is thrown.
  */
 final class RootImporter implements Builder {
-  private Vector<Builder> $builders = Vector { };
+  /** Builders keyed by the directory of the package they belong to */
+  private Map<string, Builder> $builders = Map { };
   private HHImporter $hh_importer;
 
   public function __construct(
@@ -26,7 +30,7 @@ final class RootImporter implements Builder {
     IncludedRoots $included = IncludedRoots::PROD_ONLY,
   ) {
     $this->hh_importer = new HHImporter($root, $included);
-    $this->builders[] = $this->hh_importer;
+    $this->builders[$root] = $this->hh_importer;
     $config = $this->hh_importer->getConfig();
 
     if (!$config['includeVendor']) {
@@ -34,8 +38,9 @@ final class RootImporter implements Builder {
     }
 
     foreach (\glob($root.'/vendor/*/*/') as $dependency) {
+      $name = \rtrim($dependency, '/');
       if (\file_exists($dependency.'/hh_autoload.json')) {
-        $this->builders[] = new HHImporter(
+        $this->builders[$name] = new HHImporter(
           $dependency,
           IncludedRoots::PROD_ONLY,
         );
@@ -43,16 +48,33 @@ final class RootImporter implements Builder {
       }
       $composer_json = $dependency.'/composer.json';
       if (\file_exists($composer_json)) {
-        $this->builders[] = new ComposerImporter($composer_json, $config);
+        $this->builders[$name] = new ComposerImporter($composer_json, $config);
         continue;
       }
     }
   }
 
   public function getAutoloadMap(): AutoloadMap {
-    return Merger::merge(
-      $this->builders->map($builder ==> $builder->getAutoloadMap())
-    );
+    $parser = $this->getConfig()['parser'];
+    $packages = Vector { };
+    foreach ($this->builders as $name => $builder) {
+      $map = $builder->getAutoloadMap();
+      $files = Set { };
+      $files->addAll($map['class']);
+      $files->addAll($map['function']);
+      $files->addAll($map['type']);
+      $files->addAll($map['constant']);
+      $files->addAll($builder->getFiles());
+      $packages[] = shape(
+        'name' => $name,
+        'map' => $map,
+        'definitions' => Scanner::fromFiles(
+          $files->filter($file ==> \is_file($file))->toImmVector(),
+          $parser,
+        )->getAutoloadMap(),
+      );
+    }
+    return Merger::mergePackages($packages);
   }
 
   public function getFiles(): ImmVector<string> {

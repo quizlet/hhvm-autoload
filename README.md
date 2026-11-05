@@ -45,6 +45,8 @@ A minimal configuration file is:
 
 This will look for autoloadable definitions in `src/`, and also look in `vendor/`. It will pay attention to the `autoload` sections of `composer.json` inside the `vendor/` directory.
 
+If the project and a dependency, or two dependencies, define the same class, type, function, or constant in different files, generating the map fails instead of letting one replace the other.
+
 The following settings are optional:
 
  - `"extraFiles": ["file1.php"]` - files that should not be autoloaded, but should be `require()`ed by `vendor/hh_autoload.php`. This should be needed much less frequently than under Composer
