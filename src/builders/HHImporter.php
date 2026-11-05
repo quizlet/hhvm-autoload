@@ -77,10 +77,16 @@ final class HHImporter implements Builder {
     }
 
     foreach ($config['extraFiles'] as $file) {
-      if ($file[0] !== '/') {
-        $file = $root.'/'.$file;
+      $path = $file[0] === '/' ? $file : $root.'/'.$file;
+      $resolved = PathConfinement::resolveFileInside($root, $path);
+      if ($resolved === null) {
+        throw new Exception(
+          "extraFiles entry '%s' of %s is not a file inside that directory",
+          $file,
+          $root,
+        );
       }
-      $this->files[] = $file;
+      $this->files[] = $resolved;
     }
   }
 

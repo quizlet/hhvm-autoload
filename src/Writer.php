@@ -215,7 +215,7 @@ EOF;
       throw new Exception('Call setRoot() before writeToFile()');
     }
     $path = \realpath($path);
-    if (\strpos($path, $root) !== 0) {
+    if ($path === false || \strpos($path, \rtrim($root, '/').'/') !== 0) {
       throw new Exception(
         "%s is outside root %s",
         $path,
